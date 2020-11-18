@@ -3,7 +3,7 @@ import os
 import pprint
 from dotenv import load_dotenv
 from collections import defaultdict
-
+from terminaltables import AsciiTable
 
 def getAreaId(area_name):
     url = 'https://api.hh.ru/suggests/areas'
@@ -39,17 +39,19 @@ def predict_salary(salary_from, salary_to):
         return int(salary_to) * 0.8
     return None
 
+
 def predict_rub_salary_hh(vacancy):
     if vacancy['salary'] is not None:
         payment_from = 0
         payment_to = 0
-        if salary['vacancy']['from'] is not None:
-            payment_from = int(salary['vacancy']['from'])
-        if salary['vacancy']['to'] is not None:
-            payment_to = int(salary['vacancy']['to'])
-        if salary['currency'] == 'RUR':
+        if vacancy['salary']['from'] is not None:
+            payment_from = int(vacancy['salary']['from'])
+        if vacancy['salary']['to'] is not None:
+            payment_to = int(vacancy['salary']['to'])
+        if vacancy['salary']['currency'] == 'RUR':
             return predict_salary(payment_from, payment_to)
     return None
+
     
 def predict_rub_salary_sj(vacancy):
     if vacancy['currency'] == 'rub':
@@ -66,14 +68,12 @@ def popular_languages_info_hh():
         'area': getAreaId('Москва'),
         'specialization': getSpecializationId('Программирование, Разработка'),
         'period': 30,
-        'text': 'программист',
     }
 
     popular_languages = ('JavaScript', 'Java', 'Python',
                          'Php', 'Ruby', 'C++', 'C', 'Go',)
 
     languages_info = {}
-
     max_page=100
     for language in popular_languages:
         
@@ -111,19 +111,9 @@ def popular_languages_info_sj():
         'X-Api-App-Id': secret,
     }
 
-    #keywords = 
     find_params = {
         't': 4,
     }
-
-    response = requests.get(url, params=find_params, headers=headers)
-    response.raise_for_status()
-
-    vacancies = response.json()['objects']
-
-    for vacancy in vacancies:
-        print(vacancy['profession'], vacancy['town']['title'], predict_rub_salary_sj(vacancy), sep=', ')
-
     popular_languages = ('JavaScript', 'Java', 'Python',
                          'Php', 'Ruby', 'C++', 'C', 'Go',)
 
@@ -159,8 +149,7 @@ def popular_languages_info_sj():
     return languages_info
 
 
-
-def print_programmers_info():
+def print_programmers_info_hh():
     url = 'https://api.hh.ru/vacancies'
 
     find_params = {
@@ -177,30 +166,50 @@ def print_programmers_info():
         print(vacancy['name'], predict_rub_salary_hh(vacancy))
 
 
-load_dotenv()
-secret = os.getenv('SUPERJOB_SECRET')
-pprint.pprint(popular_languages_info_sj())
+def print_programmers_info_sj():
+    url = 'https://api.superjob.ru/2.0/vacancies/'
+    headers = {
+        'X-Api-App-Id': secret,
+    }
+
+    find_params = {
+        't': 4,
+        'keywords': ['программист', 'java']
+    }
+
+    response = requests.get(url, params=find_params, headers=headers)
+    response.raise_for_status()
+
+    #print(response.json())
+    vacancies = response.json()['objects']
+
+    for vacancy in vacancies:
+        print(vacancy['profession'], vacancy['town']['title'], predict_rub_salary_sj(vacancy), sep=', ')
 
 
-'''
-url = 'https://api.superjob.ru/2.0/vacancies/'
-headers = {
-    'X-Api-App-Id': secret,
-}
+def get_info_table_instance(title, data):
+    vacancies_info = []
+    headers = ['Язык программирования', 'Вакансий найдено', 'Вакансий обработано', 'Средняя зарплата']
+    vacancies_info.append(headers)
+    for language, info in data.items():
+        vacancies_info.append([
+            language,
+            info['vacancies_found'],
+            info['vacancies_processed'],
+            info['average_salary']
+        ])
 
-find_params = {
-    't': 4,
-    'keywords': ['программист', 'java']
-}
+    table_instance = AsciiTable(vacancies_info, title)
+    return table_instance
 
-response = requests.get(url, params=find_params, headers=headers)
-response.raise_for_status()
 
-#print(response.json())
-vacancies = response.json()['objects']
+def main():
+    load_dotenv()
+    secret = os.getenv('SUPERJOB_SECRET')
 
-for vacancy in vacancies:
-    print(vacancy['profession'], vacancy['town']['title'], predict_rub_salary_sj(vacancy), sep=', ')
-'''
-#print_programmers_info()
-#pprint.pprint(popular_languages_info())
+    print(get_info_table_instance('Superjob Moscow', popular_languages_info_hh()).table)
+    print()
+    print(get_info_table_instance('HeadHunter Moscow', popular_languages_info_sj()).table)
+
+if __name__ == '__main__':
+    main()
