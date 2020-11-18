@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from collections import defaultdict
 from terminaltables import AsciiTable
 
-def getAreaId(area_name):
+def get_area_id_hh(area_name):
     url = 'https://api.hh.ru/suggests/areas'
     payload = {
         'text': area_name,
@@ -15,7 +15,7 @@ def getAreaId(area_name):
     return int(areas.json()['items'][0]['id'])
 
 
-def getSpecializationId(specialization_name):
+def get_specialization_id_hh(specialization_name):
     url = 'https://api.hh.ru/specializations'
     industries = requests.get(url)
     industries.raise_for_status()
@@ -52,7 +52,7 @@ def predict_rub_salary_hh(vacancy):
             return predict_salary(payment_from, payment_to)
     return None
 
-    
+
 def predict_rub_salary_sj(vacancy):
     if vacancy['currency'] == 'rub':
         payment_from = int(vacancy['payment_from'])
@@ -65,8 +65,10 @@ def popular_languages_info_hh():
     url = 'https://api.hh.ru/vacancies'
 
     find_params = {
-        'area': getAreaId('Москва'),
-        'specialization': getSpecializationId('Программирование, Разработка'),
+        'area': get_area_id_hh('Москва'),
+        'specialization': get_specialization_id_hh(
+            'Программирование, Разработка'
+        ),
         'period': 30,
     }
 
@@ -79,6 +81,8 @@ def popular_languages_info_hh():
         
         language_info = defaultdict(int)
         find_params['text'] = 'Программист {}'.format(language)
+        count_proceeded = 0
+        sum_proceeded = 0
         
         for page in range(max_page):
             find_params['page'] = page
@@ -89,31 +93,26 @@ def popular_languages_info_hh():
             for vacancy in page_data['items']:
                 predict_salary = predict_rub_salary_hh(vacancy)
                 if predict_salary is not None:
-                    language_info['average_salary'] += int(predict_salary)
-                    language_info['vacancies_processed'] += 1
-
+                    sum_proceeded += int(predict_salary)
+                    count_proceeded += 1
 
             if page >= page_data['pages']:
                 break
-        
+
         language_info['vacancies_found'] = page_data['found']
-        language_info['average_salary'] = int(
-            language_info['average_salary'] / language_info['vacancies_processed']
-        )
+        language_info['vacancies_processed'] = count_proceeded
+        language_info['average_salary'] = int(sum_proceeded/count_proceeded)
         languages_info[language] = language_info
 
     return languages_info
 
 
-def popular_languages_info_sj():
+def popular_languages_info_sj(secret):
     url = 'https://api.superjob.ru/2.0/vacancies/'
-    headers = {
-        'X-Api-App-Id': secret,
-    }
+    headers = {'X-Api-App-Id': secret,}
 
-    find_params = {
-        't': 4,
-    }
+    find_params = {'t': 4,}
+
     popular_languages = ('JavaScript', 'Java', 'Python',
                          'Php', 'Ruby', 'C++', 'C', 'Go',)
 
@@ -124,26 +123,28 @@ def popular_languages_info_sj():
         
         language_info = defaultdict(int)
         find_params['keywords'] = ['Программист', language]
+        count_proceeded = 0
+        sum_proceeded = 0
         
         for page in range(max_page):
             find_params['page'] = page
-            page_response = requests.get(url, params=find_params, headers=headers)
+            page_response = requests.get(url, params=find_params, 
+                                         headers=headers)
             page_response.raise_for_status()
             page_data = page_response.json()
 
             for vacancy in page_data['objects']:
                 predict_salary = predict_rub_salary_sj(vacancy)
                 if predict_salary is not None:
-                    language_info['average_salary'] += int(predict_salary)
-                    language_info['vacancies_processed'] += 1
+                    sum_proceeded += int(predict_salary)
+                    count_proceeded += 1
 
             if not page_data['more']:
                 break
         
-        language_info['vacancies_found'] = page_data['total']
-        language_info['average_salary'] = int(
-            language_info['average_salary'] / language_info['vacancies_processed']
-        )
+        language_info['vacancies_found'] = page_data['found']
+        language_info['vacancies_processed'] = count_proceeded
+        language_info['average_salary'] = int(sum_proceeded/count_proceeded)
         languages_info[language] = language_info
 
     return languages_info
@@ -180,16 +181,21 @@ def print_programmers_info_sj():
     response = requests.get(url, params=find_params, headers=headers)
     response.raise_for_status()
 
-    #print(response.json())
     vacancies = response.json()['objects']
 
     for vacancy in vacancies:
-        print(vacancy['profession'], vacancy['town']['title'], predict_rub_salary_sj(vacancy), sep=', ')
+        print(vacancy['profession'], vacancy['town']['title'],
+              predict_rub_salary_sj(vacancy), sep=', ')
 
 
 def get_info_table_instance(title, data):
     vacancies_info = []
-    headers = ['Язык программирования', 'Вакансий найдено', 'Вакансий обработано', 'Средняя зарплата']
+    headers = [
+        'Язык программирования',
+        'Вакансий найдено',
+        'Вакансий обработано',
+        'Средняя зарплата',
+    ]
     vacancies_info.append(headers)
     for language, info in data.items():
         vacancies_info.append([
@@ -207,9 +213,11 @@ def main():
     load_dotenv()
     secret = os.getenv('SUPERJOB_SECRET')
 
-    print(get_info_table_instance('Superjob Moscow', popular_languages_info_hh()).table)
+    print(get_info_table_instance('HeadHunter Moscow',
+                                  popular_languages_info_hh()).table)
     print()
-    print(get_info_table_instance('HeadHunter Moscow', popular_languages_info_sj()).table)
+    print(get_info_table_instance('Superjob Moscow',
+                                  popular_languages_info_sj(secret)).table)
 
 if __name__ == '__main__':
     main()
