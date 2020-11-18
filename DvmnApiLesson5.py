@@ -1,6 +1,7 @@
 import requests
+import os
 import pprint
-import time
+from dotenv import load_dotenv
 from collections import defaultdict
 
 
@@ -28,17 +29,33 @@ def getSpecializationId(specialization_name):
     return -1
 
 
-def predict_rub_salary(vacancy):
+def predict_salary(salary_from, salary_to):
+    if salary_from > 0:
+        if salary_to > 0:
+            return (int(salary_from) + int(salary_to)) / 2
+        else:
+            return int(salary_from) * 1.2
+    elif salary_to > 0:
+        return int(salary_to) * 0.8
+    return None
+
+def predict_rub_salary_hh(vacancy):
     if vacancy['salary'] is not None:
-        salary = vacancy['salary']
+        payment_from = 0
+        payment_to = 0
+        if salary['vacancy']['from'] is not None:
+            payment_from = int(salary['vacancy']['from'])
+        if salary['vacancy']['to'] is not None:
+            payment_to = int(salary['vacancy']['to'])
         if salary['currency'] == 'RUR':
-            if salary['from'] is not None:
-                if salary['to'] is not None:
-                    return (int(salary['from']) + int(salary['to'])) / 2
-                else:
-                    return int(salary['from']) * 1.2
-            else:
-                return int(salary['to']) * 0.8
+            return predict_salary(payment_from, payment_to)
+    return None
+    
+def predict_rub_salary_sj(vacancy):
+    if vacancy['currency'] == 'rub':
+        payment_from = int(vacancy['payment_from'])
+        payment_to = int(vacancy['payment_to'])
+        return predict_salary(payment_from, payment_to)
     return None
 
 
@@ -70,7 +87,7 @@ def popular_languages_info():
             page_data = page_response.json()
 
             for vacancy in page_data['items']:
-                predict_salary = predict_rub_salary(vacancy)
+                predict_salary = predict_rub_salary_hh(vacancy)
                 if predict_salary is not None:
                     language_info['average_salary'] += int(predict_salary)
                     language_info['vacancies_processed'] += 1
@@ -101,7 +118,29 @@ def print_programmers_info():
     page_response.raise_for_status()
     page_data = page_response.json()
     for vacancy in page_data['items']:
-        print(vacancy['name'], predict_rub_salary(vacancy))
+        print(vacancy['name'], predict_rub_salary_hh(vacancy))
 
-print_programmers_info()
-pprint.pprint(popular_languages_info())
+
+load_dotenv()
+secret = os.getenv('SUPERJOB_SECRET')
+
+url = 'https://api.superjob.ru/2.0/vacancies/'
+headers = {
+    'X-Api-App-Id': secret,
+}
+
+find_params = {
+    #'period': 7,
+    't': 4,
+}
+
+response = requests.get(url, params=find_params, headers=headers)
+response.raise_for_status()
+
+vacancies = response.json()['objects']
+
+for vacancy in vacancies:
+    print(vacancy['profession'], vacancy['town']['title'], predict_rub_salary_sj(vacancy), sep=', ')
+
+#print_programmers_info()
+#pprint.pprint(popular_languages_info())
