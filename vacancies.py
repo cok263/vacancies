@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from collections import defaultdict
 from terminaltables import AsciiTable
 
+
 def get_area_id_hh(area_name):
     url = 'https://api.hh.ru/suggests/areas'
     payload = {
@@ -61,7 +62,7 @@ def predict_rub_salary_sj(vacancy):
     return None
 
 
-def popular_languages_info_hh():
+def popular_languages_info_hh(popular_languages):
     url = 'https://api.hh.ru/vacancies'
 
     find_params = {
@@ -72,18 +73,14 @@ def popular_languages_info_hh():
         'period': 30,
     }
 
-    popular_languages = ('JavaScript', 'Java', 'Python',
-                         'Php', 'Ruby', 'C++', 'C', 'Go',)
-
     languages_info = {}
-    max_page=100
+    max_page = 100
     for language in popular_languages:
-        
         language_info = defaultdict(int)
         find_params['text'] = 'Программист {}'.format(language)
         count_proceeded = 0
         sum_proceeded = 0
-        
+
         for page in range(max_page):
             find_params['page'] = page
             page_response = requests.get(url, params=find_params)
@@ -107,28 +104,29 @@ def popular_languages_info_hh():
     return languages_info
 
 
-def popular_languages_info_sj(secret):
+def popular_languages_info_sj(secret, popular_languages):
     url = 'https://api.superjob.ru/2.0/vacancies/'
-    headers = {'X-Api-App-Id': secret,}
+    headers = {
+        'X-Api-App-Id': secret,
+    }
 
-    find_params = {'t': 4,}
-
-    popular_languages = ('JavaScript', 'Java', 'Python',
-                         'Php', 'Ruby', 'C++', 'C', 'Go',)
+    find_params = {
+        't': 4,
+        'catalogues': 'Разработка, программирование',
+    }
 
     languages_info = {}
 
-    max_page=500
+    max_page = 500
     for language in popular_languages:
-        
         language_info = defaultdict(int)
         find_params['keywords'] = ['Программист', language]
         count_proceeded = 0
         sum_proceeded = 0
-        
+
         for page in range(max_page):
             find_params['page'] = page
-            page_response = requests.get(url, params=find_params, 
+            page_response = requests.get(url, params=find_params,
                                          headers=headers)
             page_response.raise_for_status()
             page_data = page_response.json()
@@ -141,8 +139,8 @@ def popular_languages_info_sj(secret):
 
             if not page_data['more']:
                 break
-        
-        language_info['vacancies_found'] = page_data['found']
+
+        language_info['vacancies_found'] = page_data['total']
         language_info['vacancies_processed'] = count_proceeded
         language_info['average_salary'] = int(sum_proceeded/count_proceeded)
         languages_info[language] = language_info
@@ -175,7 +173,8 @@ def print_programmers_info_sj():
 
     find_params = {
         't': 4,
-        'keywords': ['программист', 'java']
+        'keywords': ['программист'],
+        'catalogues': 'Разработка, программирование',
     }
 
     response = requests.get(url, params=find_params, headers=headers)
@@ -213,11 +212,14 @@ def main():
     load_dotenv()
     secret = os.getenv('SUPERJOB_SECRET')
 
+    popular_languages = ('JavaScript', 'Java', 'Python',
+                         'Php', 'Ruby', 'C++', 'C', 'Go',)
+
     print(get_info_table_instance('HeadHunter Moscow',
-                                  popular_languages_info_hh()).table)
+        popular_languages_info_hh(popular_languages)).table)
     print()
     print(get_info_table_instance('Superjob Moscow',
-                                  popular_languages_info_sj(secret)).table)
+        popular_languages_info_sj(secret, popular_languages)).table)
 
 if __name__ == '__main__':
     main()
