@@ -25,6 +25,7 @@ def getSpecializationId(specialization_name):
                     return specialization['id']
     return -1
 
+
 base_url = 'https://api.hh.ru'
 url = '{}{}'.format(base_url, '/vacancies')
 
@@ -32,6 +33,8 @@ find_params = {
     'area': getAreaId('Москва'),
     'specialization': getSpecializationId('Программирование, Разработка'),
     'period': 30,
+    'text': 'программист'
+
 }
 
 popular_languages = {
@@ -45,8 +48,28 @@ popular_languages = {
     'Go': 0,
 }
 
+page_response = requests.get(url, params=find_params)
+page_response.raise_for_status()
+page_data = page_response.json()
+for vacancy in page_data['items']:
+    print(vacancy['name'], vacancy['salary'])
+
+
+for language in popular_languages:
+    find_params['text'] = 'Программист {}'.format(language)
+    page_response = requests.get(url, params=find_params)
+    page_response.raise_for_status()
+    page_data = page_response.json()
+    popular_languages[language] = page_data['found']
+
+pprint.pprint(popular_languages)
+
+
+
+'''
 vacancies_pages = []
 max_page=100
+
 
 for page in range(max_page):
     find_params['page'] = page
@@ -73,3 +96,4 @@ for vac in programmer_vacancies:
             popular_languages[lang] += 1
 
 pprint.pprint(popular_languages)
+'''
