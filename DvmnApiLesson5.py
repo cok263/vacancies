@@ -59,7 +59,7 @@ def predict_rub_salary_sj(vacancy):
     return None
 
 
-def popular_languages_info():
+def popular_languages_info_hh():
     url = 'https://api.hh.ru/vacancies'
 
     find_params = {
@@ -104,6 +104,62 @@ def popular_languages_info():
 
     return languages_info
 
+
+def popular_languages_info_sj():
+    url = 'https://api.superjob.ru/2.0/vacancies/'
+    headers = {
+        'X-Api-App-Id': secret,
+    }
+
+    #keywords = 
+    find_params = {
+        't': 4,
+    }
+
+    response = requests.get(url, params=find_params, headers=headers)
+    response.raise_for_status()
+
+    vacancies = response.json()['objects']
+
+    for vacancy in vacancies:
+        print(vacancy['profession'], vacancy['town']['title'], predict_rub_salary_sj(vacancy), sep=', ')
+
+    popular_languages = ('JavaScript', 'Java', 'Python',
+                         'Php', 'Ruby', 'C++', 'C', 'Go',)
+
+    languages_info = {}
+
+    max_page=500
+    for language in popular_languages:
+        
+        language_info = defaultdict(int)
+        find_params['keywords'] = ['Программист', language]
+        
+        for page in range(max_page):
+            find_params['page'] = page
+            page_response = requests.get(url, params=find_params, headers=headers)
+            page_response.raise_for_status()
+            page_data = page_response.json()
+
+            for vacancy in page_data['objects']:
+                predict_salary = predict_rub_salary_sj(vacancy)
+                if predict_salary is not None:
+                    language_info['average_salary'] += int(predict_salary)
+                    language_info['vacancies_processed'] += 1
+
+            if not page_data['more']:
+                break
+        
+        language_info['vacancies_found'] = page_data['total']
+        language_info['average_salary'] = int(
+            language_info['average_salary'] / language_info['vacancies_processed']
+        )
+        languages_info[language] = language_info
+
+    return languages_info
+
+
+
 def print_programmers_info():
     url = 'https://api.hh.ru/vacancies'
 
@@ -123,24 +179,28 @@ def print_programmers_info():
 
 load_dotenv()
 secret = os.getenv('SUPERJOB_SECRET')
+pprint.pprint(popular_languages_info_sj())
 
+
+'''
 url = 'https://api.superjob.ru/2.0/vacancies/'
 headers = {
     'X-Api-App-Id': secret,
 }
 
 find_params = {
-    #'period': 7,
     't': 4,
+    'keywords': ['программист', 'java']
 }
 
 response = requests.get(url, params=find_params, headers=headers)
 response.raise_for_status()
 
+#print(response.json())
 vacancies = response.json()['objects']
 
 for vacancy in vacancies:
     print(vacancy['profession'], vacancy['town']['title'], predict_rub_salary_sj(vacancy), sep=', ')
-
+'''
 #print_programmers_info()
 #pprint.pprint(popular_languages_info())
