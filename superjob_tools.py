@@ -1,4 +1,5 @@
 import requests
+import os
 from dotenv import load_dotenv
 
 
@@ -10,10 +11,15 @@ headers = {
 	'X-Api-App-Id': secret,
 }
 
-response = requests.get(url, headers=headers)
+find_params = {
+	#'period': 7,
+	't': 4,
+}
+
+response = requests.get(url, params=find_params, headers=headers)
 response.raise_for_status()
 
 vacancies = response.json()['objects']
 
 for vacancy in vacancies:
-	print(vacancy['profession'])
+	print(vacancy['profession'], vacancy['town']['title'], sep=', ')
