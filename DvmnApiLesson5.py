@@ -1,10 +1,11 @@
 import requests
 import pprint
+import time
 from collections import defaultdict
 
 
 def getAreaId(area_name):
-    url = '{}{}'.format(base_url, '/suggests/areas')
+    url = 'https://api.hh.ru/suggests/areas'
     payload = {
         'text': area_name,
     }
@@ -14,7 +15,7 @@ def getAreaId(area_name):
 
 
 def getSpecializationId(specialization_name):
-    url = '{}{}'.format(base_url, '/specializations')
+    url = 'https://api.hh.ru/specializations'
     industries = requests.get(url)
     industries.raise_for_status()
     for industry in industries.json():
@@ -42,6 +43,7 @@ def predict_rub_salary(vacancy):
 
 
 def popular_languages_info():
+    url = 'https://api.hh.ru/vacancies'
 
     find_params = {
         'area': getAreaId('Москва'),
@@ -55,81 +57,51 @@ def popular_languages_info():
 
     languages_info = {}
 
+    max_page=100
     for language in popular_languages:
+        
         language_info = defaultdict(int)
-
         find_params['text'] = 'Программист {}'.format(language)
-        page_response = requests.get(url, params=find_params)
-        page_response.raise_for_status()
-        page_data = page_response.json()
+        
+        for page in range(max_page):
+            find_params['page'] = page
+            page_response = requests.get(url, params=find_params)
+            page_response.raise_for_status()
+            page_data = page_response.json()
 
-        for vacancy in page_data['items']:
-            predict_salary = predict_rub_salary(vacancy)
-            if predict_salary is not None:
-                language_info['average_salary'] += int(predict_salary)
-                language_info['vacancies_processed'] += 1
+            for vacancy in page_data['items']:
+                predict_salary = predict_rub_salary(vacancy)
+                if predict_salary is not None:
+                    language_info['average_salary'] += int(predict_salary)
+                    language_info['vacancies_processed'] += 1
 
+
+            if page >= page_data['pages']:
+                break
+        
         language_info['vacancies_found'] = page_data['found']
         language_info['average_salary'] = int(
             language_info['average_salary'] / language_info['vacancies_processed']
         )
         languages_info[language] = language_info
+
     return languages_info
 
+def print_programmers_info():
+    url = 'https://api.hh.ru/vacancies'
 
+    find_params = {
+        'area': getAreaId('Москва'),
+        'specialization': getSpecializationId('Программирование, Разработка'),
+        'period': 30,
+        'text': 'программист'
+    }
 
-
-base_url = 'https://api.hh.ru'
-url = '{}{}'.format(base_url, '/vacancies')
-
-find_params = {
-    'area': getAreaId('Москва'),
-    'specialization': getSpecializationId('Программирование, Разработка'),
-    'period': 30,
-    'text': 'программист'
-}
-
-
-page_response = requests.get(url, params=find_params)
-page_response.raise_for_status()
-page_data = page_response.json()
-for vacancy in page_data['items']:
-    #print(vacancy['name'], vacancy['salary'])
-    print(vacancy['name'], predict_rub_salary(vacancy))
-
-pprint.pprint(popular_languages_info())
-
-
-
-
-'''
-vacancies_pages = []
-max_page=100
-
-
-for page in range(max_page):
-    find_params['page'] = page
     page_response = requests.get(url, params=find_params)
     page_response.raise_for_status()
-
     page_data = page_response.json()
-    if page >= page_data['pages']:
-        break
+    for vacancy in page_data['items']:
+        print(vacancy['name'], predict_rub_salary(vacancy))
 
-    vacancies_pages.append(page_data)
-
-programmer_vacancies = []
-find_vacancy = 'программист'
-for vacancies_page in vacancies_pages:
-    for vacancy in vacancies_page['items']:
-        if find_vacancy in vacancy['name'].lower():
-            programmer_vacancies.append(vacancy)
-
-print(len(programmer_vacancies))
-for vac in programmer_vacancies:
-    for lang in popular_languages:
-        if lang.lower() in vac['name'].lower():
-            popular_languages[lang] += 1
-
-pprint.pprint(popular_languages)
-'''
+print_programmers_info()
+pprint.pprint(popular_languages_info())
