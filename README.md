@@ -24,7 +24,7 @@ pip install -r requirements.txt
 
 Пример команды запуска
 ```
-python3 vacancies.py
+python3 table_view.py
 ```
 
 ### Цель проекта
