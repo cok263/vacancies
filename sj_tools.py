@@ -11,10 +11,10 @@ def predict_rub_salary_sj(vacancy):
         return predict_salary(payment_from, payment_to)
 
 
-def popular_languages_info_sj(secret, popular_languages):
+def popular_languages_info_sj(sj_secret_key, popular_languages):
     url = 'https://api.superjob.ru/2.0/vacancies/'
     headers = {
-        'X-Api-App-Id': secret,
+        'X-Api-App-Id': sj_secret_key,
     }
 
     find_params = {

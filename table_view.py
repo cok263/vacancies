@@ -31,7 +31,7 @@ def get_info_table_instance(title, data):
 
 def main():
     load_dotenv()
-    secret = os.getenv('SUPERJOB_SECRET')
+    sj_secret_key = os.getenv('SUPERJOB_SECRET_KEY')
 
     popular_languages = ('JavaScript', 'Java', 'Python',
                          'Php', 'Ruby', 'C++', 'C', 'Go',)
@@ -40,7 +40,7 @@ def main():
         popular_languages_info_hh(popular_languages)).table)
     print()
     print(get_info_table_instance('Superjob Moscow',
-        popular_languages_info_sj(secret, popular_languages)).table)
+        popular_languages_info_sj(sj_secret_key, popular_languages)).table)
 
 if __name__ == '__main__':
     main()
