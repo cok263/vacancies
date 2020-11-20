@@ -1,7 +1,7 @@
 import requests
 from collections import defaultdict
 
-from hh_tools import predict_salary
+from salary import predict_salary
 
 
 def predict_rub_salary_sj(vacancy):

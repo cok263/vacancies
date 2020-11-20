@@ -1,6 +1,8 @@
 import requests
 from collections import defaultdict
 
+from salary import predict_salary
+
 
 def get_area_id_hh(area_name):
     url = 'https://api.hh.ru/suggests/areas'
@@ -24,16 +26,6 @@ def get_specialization_id_hh(specialization_name):
                 if specialization['name'] == specialization_name:
                     return specialization['id']
     return -1
-
-
-def predict_salary(salary_from, salary_to):
-    if salary_from > 0:
-        if salary_to > 0:
-            return (int(salary_from) + int(salary_to)) / 2
-        else:
-            return int(salary_from) * 1.2
-    elif salary_to > 0:
-        return int(salary_to) * 0.8
 
 
 def predict_rub_salary_hh(vacancy):
